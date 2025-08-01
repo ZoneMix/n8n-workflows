@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "=https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token",
+        "options": {
+          "bodyContentType": "form-urlencoded",
+          "fullResponse": true
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "client_id",
+              "value": "CLIENT_ID"
+            },
+            {
+              "name": "client_secret",
+              "value": "CLIENT_SECRET"
+            },
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "scope",
+              "value": "https://graph.microsoft.com/.default"
+            }
+          ]
+        }
+      },
+      "name": "Token Refresh",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "9b81fe23-2376-4130-ab6b-22e5964b2e9b"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "f4e852f8-bf3a-4874-9b83-7939f66dcc14",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Token Refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
