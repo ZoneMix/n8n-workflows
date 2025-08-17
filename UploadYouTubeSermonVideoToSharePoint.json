@@ -1,19 +1,8 @@
 {
   "nodes": [
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -128,
-        192
-      ],
-      "id": "cc67417a-9c70-43af-8689-549d036c3d0a",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
       "parameters": {
-        "command": "=curl -u :tk_TOKEN -d \"Uploaded all Sermon Videos to SharePoint\" https://ntfy.example.com/TOPIC"
+        "command": "=curl -u :NTFY_TOKEN -d \"Uploaded all Sermon Videos to SharePoint\" https://ntfy.domain.tld/topic_name"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -77,7 +66,7 @@
       "parameters": {
         "resource": "playlistItem",
         "operation": "getAll",
-        "playlistId": "PLAYLIST_ID",
+        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
         "returnAll": true,
         "options": {}
       },
@@ -117,47 +106,20 @@
       "typeVersion": 2,
       "position": [
         544,
-        -48
+        -208
       ],
       "id": "1ab54e94-6b9c-4646-a63c-9e1662446852",
       "name": "Create Sermon Filename"
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "koZ28b7PZsvtUxhe",
-          "mode": "list",
-          "cachedResultName": "Microsoft Graph API Token Refresh"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
-      "position": [
-        768,
-        -48
-      ],
-      "id": "fa93dc19-a905-48bc-9ff4-e253b29b3941",
-      "name": "Refresh Graph API Token"
-    },
-    {
-      "parameters": {
-        "url": "=https://graph.microsoft.com/v1.0/sites/SHAREPOINT_SITE_ID/drive/root:/FILE_PATH/{{ $('Create Sermon Filename').item.json.fileName }}.mp4",
+        "url": "=https://graph.microsoft.com/v1.0/sites/SITE_UUID/drive/root:/PATH_TO_SERMON_VIDEOS/{{ $('Create Sermon Filename').item.json.fileName }}.mp4",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $json.body.access_token }}"
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
             }
           ]
         },
@@ -167,7 +129,7 @@
       "typeVersion": 4.2,
       "position": [
         992,
-        -48
+        -272
       ],
       "id": "c94e7c29-22a5-4476-8408-f2da8936a22a",
       "name": "Check if Sermon File Exists in SharePoint",
@@ -181,21 +143,21 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1216,
-        -48
+        1440,
+        -176
       ],
       "id": "151d46a9-67bb-499b-ac9b-9ec7181bd8f5",
       "name": "Download Sermon Video Locally"
     },
     {
       "parameters": {
-        "url": "https://graph.microsoft.com/v1.0/sites/SHAREPOINT_SITE_SUBDOMAIN:/sites/SITE_NAME",
+        "url": "https://graph.microsoft.com/v1.0/sites/westcenterbaptist.sharepoint.com:/sites/WestCenterBaptist",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $('Refresh Graph API Token').item.json.body.access_token }}"
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
             }
           ]
         },
@@ -204,8 +166,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1664,
-        -48
+        1888,
+        -160
       ],
       "id": "66515b97-7748-4614-9a95-dc4e72a568ae",
       "name": "Get SharePoint Site ID"
@@ -217,8 +179,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1888,
-        -48
+        2112,
+        -160
       ],
       "id": "4b5f937f-2719-41ff-bd4b-37215f2c020d",
       "name": "Create SharePoint Site ID Object"
@@ -226,13 +188,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.microsoft.com/v1.0/sites/{{ $json.siteCollectionId }}/drive/items/DRIVE_ITEM_ID:/{{ $('Create Sermon Filename').item.json.fileName }}.mp4:/createUploadSession",
+        "url": "=https://graph.microsoft.com/v1.0/sites/{{ $json.siteCollectionId }}/drive/items/FOLDER_ID:/{{ $('Create Sermon Filename').item.json.fileName }}.mp4:/createUploadSession",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $('Refresh Graph API Token').item.json.body.access_token }}"
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
             }
           ]
         },
@@ -241,8 +203,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2112,
-        -48
+        2336,
+        -160
       ],
       "id": "e458916b-1131-4a78-b430-6033cd62583f",
       "name": "Create Sermon Upload Session"
@@ -254,8 +216,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2336,
-        -48
+        2560,
+        -160
       ],
       "id": "4ee554a7-7ff7-4fe5-b8ab-3442ceab69c7",
       "name": "Upload Sermon Video in Chunks"
@@ -267,8 +229,8 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2560,
-        128
+        2784,
+        64
       ],
       "id": "0187d34f-a22f-4636-95a8-287df6794967",
       "name": "Delete Local Sermon Video",
@@ -301,38 +263,123 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1440,
-        -48
+        1664,
+        -160
       ],
       "id": "d55ca2df-14c5-46a3-a6ef-80304c4b1cbd",
       "name": "If Deleted Video, Loop, Else, Continue"
     },
     {
       "parameters": {
-        "inputSource": "passthrough"
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ]
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
       "position": [
         -128,
-        384
+        288
       ],
-      "id": "46cc45ca-3b2b-4599-9d35-398bd9c0b4d3",
-      "name": "When Executed by Another Workflow"
+      "id": "e9cbb630-9a94-4562-a819-4863194aa5a7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "69b5ef7f-5174-4fb2-8a97-2dcf1f130e78",
+              "leftValue": "={{ $('Check if Sermon File Exists in SharePoint').item.json.error.status }}",
+              "rightValue": 401,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -272
+      ],
+      "id": "f672d5e7-54ce-4ff9-9865-ae17819b591a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "koZ28b7PZsvtUxhe",
+          "mode": "list",
+          "cachedResultName": "Microsoft Graph API Token Refresh"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        -368
+      ],
+      "id": "aa32f592-a06b-4273-804e-4e010a864d47",
+      "name": "Refresh Token",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{ $json.body.access_token }}\" > /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        -352
+      ],
+      "id": "7bff818b-430d-43fa-b51f-85cd3a565021",
+      "name": "Update Graph API Token"
+    },
+    {
+      "parameters": {
+        "command": "cat /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -208
+      ],
+      "id": "fe72b723-a6ac-4134-9167-a4360dec949f",
+      "name": "Get Graph API Token"
     }
   ],
   "connections": {
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Get all Sermon Objects",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Push Notification to Ntfy": {
       "main": [
         [
@@ -399,18 +446,7 @@
       "main": [
         [
           {
-            "node": "Refresh Graph API Token",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Refresh Graph API Token": {
-      "main": [
-        [
-          {
-            "node": "Check if Sermon File Exists in SharePoint",
+            "node": "Get Graph API Token",
             "type": "main",
             "index": 0
           }
@@ -428,7 +464,7 @@
         ],
         [
           {
-            "node": "Download Sermon Video Locally",
+            "node": "If",
             "type": "main",
             "index": 0
           }
@@ -519,11 +555,62 @@
         ]
       ]
     },
-    "When Executed by Another Workflow": {
+    "Schedule Trigger": {
       "main": [
         [
           {
             "node": "Get all Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Refresh Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Sermon Video Locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Token": {
+      "main": [
+        [
+          {
+            "node": "Update Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Graph API Token": {
+      "main": [
+        [
+          {
+            "node": "Get Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Graph API Token": {
+      "main": [
+        [
+          {
+            "node": "Check if Sermon File Exists in SharePoint",
             "type": "main",
             "index": 0
           }

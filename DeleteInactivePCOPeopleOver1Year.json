@@ -1,0 +1,206 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -16
+      ],
+      "id": "97f16352-d95d-4de8-b7d9-b46b38c4c6b3",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "peopleFilters": {
+          "whereFilters": [
+            {
+              "field": "status",
+              "stringValue": "inactive"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -16
+      ],
+      "id": "11e44c0c-204c-4eae-af44-f7bc859a8105",
+      "name": "Get many people",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        304,
+        -16
+      ],
+      "id": "e036868b-4190-4dac-ace3-5632222d294d",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "subtractFromDate",
+        "magnitude": "={{ $now }}",
+        "timeUnit": "years",
+        "duration": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -16
+      ],
+      "id": "113d31e5-be91-418c-8a4c-1afdff484b13",
+      "name": "1 Year Ago"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f5f45ac5-2aa8-4b08-b7e0-dce9e1c58707",
+              "leftValue": "={{ $json.attributes.inactivated_at }}",
+              "rightValue": "={{ $('1 Year Ago').item.json.newDate }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        80
+      ],
+      "id": "8a2f92c0-7199-46b4-ae9a-9e359da784a8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "deletePerson",
+        "personId": "={{ $('Get many people').item.json.id }}"
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        928,
+        -16
+      ],
+      "id": "eb3fb617-8332-4a82-86eb-ca3df5b7b2d8",
+      "name": "Delete a person",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -16
+      ],
+      "id": "38cea4a3-964a-4c67-be82-42d0c427c096",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "1 Year Ago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many people": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1 Year Ago": {
+      "main": [
+        [
+          {
+            "node": "Get many people",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}

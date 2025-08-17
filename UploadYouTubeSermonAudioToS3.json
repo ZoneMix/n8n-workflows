@@ -1,0 +1,461 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "command": "=curl -u :NTFY_TOKEN -d \"Uploaded all Sermon Audio to S3\" https://ntfy.domain.tld/topic_name"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        544,
+        112
+      ],
+      "id": "3c4c22cf-f652-4329-8dbb-e84971df2e94",
+      "name": "Push Notification to Ntfy"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "038a4e3d-fab2-40d9-9452-f0ef346d14cd",
+              "name": "stdout",
+              "value": "={{ $json.stdout }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        112
+      ],
+      "id": "bcc475df-a88c-444f-a774-73fdf66afdac",
+      "name": "Change stdout to Object"
+    },
+    {
+      "parameters": {
+        "command": "=echo -n {{ $json.stdout.topic }} | sha256sum | cut -d ' ' -f1"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        992,
+        112
+      ],
+      "id": "21b22c17-da5b-49c4-acfb-51a99d8a9c9f",
+      "name": "Create SHA256 Hash of Topic"
+    },
+    {
+      "parameters": {
+        "command": "=curl -X POST -H \"X-Poll-ID: {{ $('Change stdout to Object').item.json.stdout.id }}\" https://ntfy.sh/{{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        112
+      ],
+      "id": "00e9cfba-dd10-4a6d-bf83-86c24f8118c0",
+      "name": "Instant Notification to iOS"
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        96,
+        256
+      ],
+      "id": "a4a862a3-e3be-4dd0-8b36-e81ad8cff7ed",
+      "name": "Get all Sermon Objects",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "y5Vxsu2dISMYnKrO",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        320,
+        256
+      ],
+      "id": "9316f710-2db3-4334-9e67-d7d2c7cf21bf",
+      "name": "Loop Sermon Objects"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n\n  result.push({\n    json: {\n      ...item.json,\n      fileName: fileName\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -80
+      ],
+      "id": "f1778a51-7468-4be1-8af3-14c3c3071f10",
+      "name": "Create Sermon Filename"
+    },
+    {
+      "parameters": {
+        "command": "=yt-dlp -t mp3 -o \"/tmp/%(id)s.%(ext)s\" --embed-thumbnail --embed-metadata https://www.youtube.com/watch?v={{ $('Create Sermon Filename').item.json.contentDetails.videoId }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        -80
+      ],
+      "id": "a813a63a-e08f-4f92-920a-1c432c8c942d",
+      "name": "Download Sermon Audio Locally",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "command": "=rm /tmp/{{ $('Get all Sermon Objects').item.json.contentDetails.videoId }}.mp3"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        96
+      ],
+      "id": "7883dfd5-e7e5-4365-a5ac-aec8fd458374",
+      "name": "Delete Local Sermon Audio",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bc288842-4ee6-4443-9fdb-1579b37e7a73",
+              "leftValue": "={{ $json.exitCode }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        -80
+      ],
+      "id": "7d834943-da52-433f-9e12-27b66ceea7a2",
+      "name": "If Deleted Video, Loop, Else, Continue"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "S3_BUCKET_NAME",
+        "fileName": "={{ $('Create Sermon Filename').item.json.fileName }}.mp3",
+        "additionalFields": {
+          "parentFolderKey": "FOLDER_KEY (e.g. audio)"
+        }
+      },
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        -80
+      ],
+      "id": "5fd325ad-60d9-49a4-bae7-fbcb88450dd9",
+      "name": "Upload a file",
+      "credentials": {
+        "aws": {
+          "id": "O4ogNrakmPtUp2Ad",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/tmp/{{ $('Get all Sermon Objects').item.json.contentDetails.videoId }}.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        -80
+      ],
+      "id": "ee99bb0f-0dba-4a01-8e6a-e7b5fc38148d",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        256
+      ],
+      "id": "6e9f503c-8319-42b3-b47e-ba227b742e8f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "command": "=curl \"https://S3_BUCKET_NAME.s3.us-east-1.amazonaws.com/PATH_TO_AUDIO/{{ encodeURIComponent($('Create Sermon Filename').item.json.fileName) }}.mp3\" -I -s | head -n1 | cut -d ' ' -f2"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -80
+      ],
+      "id": "d208aefc-f9c3-4970-aeb0-e514d2ecbc2d",
+      "name": "Check if audio file exists in S3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b850256-5af7-48bf-807d-82390c8b2749",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "200",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        -80
+      ],
+      "id": "bcdfa61b-12c4-4aca-92bc-b6e78163e59a",
+      "name": "If no, upload sermon audio to S3",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Push Notification to Ntfy": {
+      "main": [
+        [
+          {
+            "node": "Change stdout to Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change stdout to Object": {
+      "main": [
+        [
+          {
+            "node": "Create SHA256 Hash of Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SHA256 Hash of Topic": {
+      "main": [
+        [
+          {
+            "node": "Instant Notification to iOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all Sermon Objects": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Sermon Objects": {
+      "main": [
+        [
+          {
+            "node": "Push Notification to Ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Sermon Filename",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sermon Filename": {
+      "main": [
+        [
+          {
+            "node": "Check if audio file exists in S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Sermon Audio Locally": {
+      "main": [
+        [
+          {
+            "node": "If Deleted Video, Loop, Else, Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Local Sermon Audio": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Deleted Video, Loop, Else, Continue": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload a file": {
+      "main": [
+        [
+          {
+            "node": "Delete Local Sermon Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Upload a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get all Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if audio file exists in S3": {
+      "main": [
+        [
+          {
+            "node": "If no, upload sermon audio to S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If no, upload sermon audio to S3": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Sermon Audio Locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}

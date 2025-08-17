@@ -1,0 +1,627 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "command": "=curl -u :NTFY_TOKEN -d \"Uploaded all Sermon Audio to SharePoint\" https://ntfy.domain.tld/topic_name"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -56
+      ],
+      "id": "00e0d058-fb69-46ab-b89a-b7c369b9886f",
+      "name": "Push Notification to Ntfy"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "038a4e3d-fab2-40d9-9452-f0ef346d14cd",
+              "name": "stdout",
+              "value": "={{ $json.stdout }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        -56
+      ],
+      "id": "af99ff46-2e03-4e28-80a9-2e8e723ac5b0",
+      "name": "Change stdout to Object"
+    },
+    {
+      "parameters": {
+        "command": "=echo -n {{ $json.stdout.topic }} | sha256sum | cut -d ' ' -f1"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -56
+      ],
+      "id": "dba5dd58-a1d0-4eac-aba5-4668e500dc37",
+      "name": "Create SHA256 Hash of Topic"
+    },
+    {
+      "parameters": {
+        "command": "=curl -X POST -H \"X-Poll-ID: {{ $('Change stdout to Object').item.json.stdout.id }}\" https://ntfy.sh/{{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -56
+      ],
+      "id": "34dc8426-7f05-4f6d-8afa-dd8255441116",
+      "name": "Instant Notification to iOS"
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        88
+      ],
+      "id": "685b129d-9419-4a03-91e0-aaff13320388",
+      "name": "Get all Sermon Objects",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "y5Vxsu2dISMYnKrO",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        192,
+        88
+      ],
+      "id": "040e7447-330c-4c55-872e-60f4125d6271",
+      "name": "Loop Sermon Objects"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n\n  result.push({\n    json: {\n      ...item.json,\n      fileName: fileName\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -392
+      ],
+      "id": "d707378c-d4b0-47d0-bc42-6abd22695137",
+      "name": "Create Sermon Filename"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.microsoft.com/v1.0/sites/SITE_UUID/drive/root:/PATH_TO_SERMON_AUDIO/{{ $('Create Sermon Filename').item.json.fileName }}.mp3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        -464
+      ],
+      "id": "cc85787a-e01c-4e5b-b12a-decaff6f0da0",
+      "name": "Check if Sermon File Exists in SharePoint",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/sites/westcenterbaptist.sharepoint.com:/sites/WestCenterBaptist",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -344
+      ],
+      "id": "b4603f62-546e-4d1c-9f7a-6a3462178039",
+      "name": "Get SharePoint Site ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  const siteId = item.json.id; // e.g., \"yourcompany.sharepoint.com,guid1,guid2\"\n  if (!siteId) {\n    throw new Error(\"Site ID not found in input\");\n  }\n\n  // Split the site ID into an array\n  const idParts = siteId.split(\",\");\n\n  // Create output with all parts and optionally specific ones\n  result.push({\n    json: {\n      hostname: idParts[0],           // e.g., \"yourcompany.sharepoint.com\"\n      siteCollectionId: idParts[1],   // First GUID\n      siteId: idParts[2],             // Second GUID\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        -344
+      ],
+      "id": "59d4c2a0-83a1-4054-9bd4-71e9fec5b069",
+      "name": "Create SharePoint Site ID Object"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/sites/{{ $json.siteCollectionId }}/drive/items/FOLDER_ID:/{{ $('Create Sermon Filename').item.json.fileName }}.mp3:/createUploadSession",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2208,
+        -344
+      ],
+      "id": "ef99385f-6df2-40f1-ab90-eb56f6ec7136",
+      "name": "Create Sermon Upload Session"
+    },
+    {
+      "parameters": {
+        "command": "=yt-dlp -t mp3 -o \"/tmp/%(id)s.%(ext)s\" --embed-thumbnail --embed-metadata https://www.youtube.com/watch?v={{ $('Create Sermon Filename').item.json.contentDetails.videoId }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        -368
+      ],
+      "id": "fa921242-5c59-4eb7-9d49-307fcf208f7c",
+      "name": "Download Sermon Audio Locally"
+    },
+    {
+      "parameters": {
+        "jsCode": "const https = require('https');\nconst url = require('url'); // For parsing URLs\nconst fs = require('fs');\n\nasync function httpRequest(options, body = null) {\n  return new Promise((resolve, reject) => {\n    const req = https.request(options, (res) => {\n      let data = '';\n      res.on('data', (chunk) => data += chunk);\n      res.on('end', () => {\n        console.log(`Response for bytes ${options.headers['Content-Range']}: Status ${res.statusCode}`);\n        if (res.statusCode >= 400) {\n          reject(new Error(`HTTP ${res.statusCode}: ${data}`));\n        }\n        resolve({\n          status: res.statusCode,\n          body: data ? JSON.parse(data) : {}\n        });\n      });\n    });\n\n    req.on('error', (err) => reject(new Error(`Request failed: ${err.message}`)));\n\n    if (body) {\n      if (typeof body === 'string') {\n        req.write(body);\n        req.end();\n      } else {\n        body.pipe(req);\n        body.on('end', () => req.end());\n        body.on('error', (err) => reject(new Error(`Stream error: ${err.message}`)));\n      }\n    } else {\n      req.end();\n    }\n  });\n}\n\nconst localFilePath = '/tmp/' + $('Create Sermon Filename').first().json.contentDetails.videoId + '.mp3';\nconst uploadUrl = $input.first().json.uploadUrl;\n\nconst stats = fs.statSync(localFilePath);\nconst totalSize = stats.size;\nconst chunkSize = 5 * 1024 * 1024; // 5 MB, multiple of 320 KiB\n\nlet offset = 0;\nlet uploadedBytes = 0;\nlet driveItem = null;\n\nconsole.log(`Starting upload. Total size: ${totalSize} bytes, uploadUrl: ${uploadUrl}`);\n\n// Parse uploadUrl using url module\nconst uploadUrlParsed = url.parse(uploadUrl);\nif (!uploadUrlParsed.hostname || !uploadUrlParsed.pathname) {\n  throw new Error(`Invalid uploadUrl: ${uploadUrl}`);\n}\n\nconst baseOptions = {\n  hostname: uploadUrlParsed.hostname,\n  path: uploadUrlParsed.pathname + (uploadUrlParsed.search || ''),\n  method: 'PUT'\n};\n\nwhile (true) {\n  const start = offset;\n  if (start >= totalSize) {\n    break;\n  }\n  const end = Math.min(start + chunkSize - 1, totalSize - 1);\n  const chunkLength = end - start + 1;\n  const readStream = fs.createReadStream(localFilePath, { start, end }); // end is inclusive\n\n  const uploadOptions = {\n    ...baseOptions,\n    headers: {\n      'Content-Range': `bytes ${start}-${end}/${totalSize}`,\n      'Content-Length': chunkLength\n    }\n  };\n\n  console.log(`Uploading chunk: ${uploadOptions.headers['Content-Range']}, Host: ${uploadOptions.hostname}, Path: ${uploadOptions.path}`);\n\n  try {\n    const { status, body } = await httpRequest(uploadOptions, readStream);\n    uploadedBytes += chunkLength;\n    console.log(`Successfully uploaded chunk: bytes ${start}-${end}/${totalSize}, status: ${status}`);\n\n    if (status === 201 || status === 200) {\n      driveItem = body;\n      break;\n    } else if (status === 202) {\n      if (!body.nextExpectedRanges || body.nextExpectedRanges.length === 0) {\n        // Upload complete, but no driveItem? Unlikely, but break\n        break;\n      } else {\n        const rangeStr = body.nextExpectedRanges[0];\n        const parts = rangeStr.split('-');\n        offset = parseInt(parts[0]);\n        let maxEnd = totalSize - 1;\n        if (parts[1] && parts[1] !== '') {\n          maxEnd = parseInt(parts[1]) - 1;\n        }\n        // In the next iteration, end will be min(start + chunkSize - 1, totalSize - 1)\n        // But to respect maxEnd:\n        if (offset > maxEnd) {\n          break;\n        }\n      }\n    } else {\n      throw new Error(`Unexpected status code: ${status}`);\n    }\n  } catch (err) {\n    throw new Error(`Chunk upload failed at bytes ${start}-${end}: ${err.message}`);\n  }\n}\n\nconst result = [{\n  json: {\n    success: true,\n    message: `File uploaded successfully. Total bytes: ${uploadedBytes}`,\n    driveItem: driveItem || {}\n  }\n}];\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        -344
+      ],
+      "id": "4c3dc5af-b575-4a0c-a477-e6643dbdb9b8",
+      "name": "Upload Sermon Audio in Chunks"
+    },
+    {
+      "parameters": {
+        "command": "=rm /tmp/{{ $('Get all Sermon Objects').item.json.contentDetails.videoId }}.mp3"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        -128
+      ],
+      "id": "97a2da23-527a-4d5a-bfcd-49351380fdd3",
+      "name": "Delete Local Sermon Audio",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bc288842-4ee6-4443-9fdb-1579b37e7a73",
+              "leftValue": "={{ $json.exitCode }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        -344
+      ],
+      "id": "4ba08c50-16a4-4115-b613-83592371802b",
+      "name": "If Deleted Video, Loop, Else, Continue"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        88
+      ],
+      "id": "8db264a5-3ca9-4aa1-bcf3-f884e64bfd7f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "69b5ef7f-5174-4fb2-8a97-2dcf1f130e78",
+              "leftValue": "={{ $('Check if Sermon File Exists in SharePoint').item.json.error.status }}",
+              "rightValue": 401,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1088,
+        -464
+      ],
+      "id": "95557e4f-4b7f-435c-84bb-e9ea1eefbadf",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "koZ28b7PZsvtUxhe",
+          "mode": "list",
+          "cachedResultName": "Microsoft Graph API Token Refresh"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        -560
+      ],
+      "id": "49c3ec51-e872-4335-b379-4893b9b7bffc",
+      "name": "Refresh Token",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{ $json.body.access_token }}\" > /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        -536
+      ],
+      "id": "78741a23-c67b-4a0a-a15c-fa4ca4dda31f",
+      "name": "Update Graph API Token"
+    },
+    {
+      "parameters": {
+        "command": "cat /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -392
+      ],
+      "id": "81fc1ed0-c7a5-49fb-a1af-2c713422b4e6",
+      "name": "Get Graph API Token"
+    }
+  ],
+  "connections": {
+    "Push Notification to Ntfy": {
+      "main": [
+        [
+          {
+            "node": "Change stdout to Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change stdout to Object": {
+      "main": [
+        [
+          {
+            "node": "Create SHA256 Hash of Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SHA256 Hash of Topic": {
+      "main": [
+        [
+          {
+            "node": "Instant Notification to iOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all Sermon Objects": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Sermon Objects": {
+      "main": [
+        [
+          {
+            "node": "Push Notification to Ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Sermon Filename",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sermon Filename": {
+      "main": [
+        [
+          {
+            "node": "Get Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Sermon File Exists in SharePoint": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SharePoint Site ID": {
+      "main": [
+        [
+          {
+            "node": "Create SharePoint Site ID Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SharePoint Site ID Object": {
+      "main": [
+        [
+          {
+            "node": "Create Sermon Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sermon Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Upload Sermon Audio in Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Sermon Audio Locally": {
+      "main": [
+        [
+          {
+            "node": "If Deleted Video, Loop, Else, Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Sermon Audio in Chunks": {
+      "main": [
+        [
+          {
+            "node": "Delete Local Sermon Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Local Sermon Audio": {
+      "main": [
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Deleted Video, Loop, Else, Continue": {
+      "main": [
+        [
+          {
+            "node": "Get SharePoint Site ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get all Sermon Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Refresh Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Sermon Audio Locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Token": {
+      "main": [
+        [
+          {
+            "node": "Update Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Graph API Token": {
+      "main": [
+        [
+          {
+            "node": "Get Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Graph API Token": {
+      "main": [
+        [
+          {
+            "node": "Check if Sermon File Exists in SharePoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}

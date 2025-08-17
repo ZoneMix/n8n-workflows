@@ -1,0 +1,170 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0368d176-3e8f-453a-91a9-d106fb8e3e26",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "publishing",
+        "operation": "getManyEpisodes",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "74a202e5-1fba-4fe3-adde-674e2c717512",
+      "name": "Get many episodes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5ef6de3b-48b1-4517-9024-95ffc231af6b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "78289ced-9432-4066-b605-d4344b6d1c1f",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        80
+      ],
+      "id": "eb1a5190-aee6-4534-90dc-d19ca5bd8667",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $json.links.self }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "planningCenterOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        64
+      ],
+      "id": "69c149e3-d2c5-4f1d-aa8d-96dc213724e6",
+      "name": "Delete Episode",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many episodes": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Delete Episode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Episode": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
