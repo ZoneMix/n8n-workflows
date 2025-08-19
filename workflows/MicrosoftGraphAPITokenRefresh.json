@@ -3,7 +3,7 @@
     {
       "parameters": {
         "requestMethod": "POST",
-        "url": "=https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token",
+        "url": "=https://login.microsoftonline.com/TENANT_UUID/oauth2/v2.0/token",
         "options": {
           "bodyContentType": "form-urlencoded",
           "fullResponse": true
@@ -50,9 +50,33 @@
       ],
       "id": "f4e852f8-bf3a-4874-9b83-7939f66dcc14",
       "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{ $json.body.access_token }}\" > /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        160,
+        0
+      ],
+      "id": "cc8df8d3-1c70-4ab4-80fd-37b849d34806",
+      "name": "Update Graph API Token"
     }
   ],
   "connections": {
+    "Token Refresh": {
+      "main": [
+        [
+          {
+            "node": "Update Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "When Executed by Another Workflow": {
       "main": [
         [
