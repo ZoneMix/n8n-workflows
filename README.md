@@ -3,7 +3,7 @@
 This is a repository to share how I use n8n. I've included a `docker-compose.yml` file and `data`. If you plan to use this n8n configuration, be sure to edit the compose file and follow instructions. I also use a cloudflare tunnel to make the subdomain available, so the networking may need to change based on your network/hosting setup.
 
 # Workflow Examples
-Just copy and paste the JSON right into n8n!
+In `workflows`, you will see example workflows I've created. The images below show some of them. If you want to use or edit these workflows, just copy and paste the JSON data right into a n8n workflow!
 
 ## Upload Sermons to PCO
 <img width="1688" height="977" alt="image" src="https://github.com/user-attachments/assets/12539869-1a2c-42b8-b95f-2a67acc7bb5f" />
