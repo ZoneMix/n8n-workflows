@@ -1,4 +1,4 @@
-# n8n Workflow Examples
+# n8n Workflows
 
 Just copy and paste the JSON right into n8n!
 
