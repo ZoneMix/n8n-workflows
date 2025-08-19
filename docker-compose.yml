@@ -1,0 +1,61 @@
+# I self host this on my subdomain n8n.zonemix.tech
+#
+# Run
+#
+# mkdir data
+# npm install --global ytdl-core
+# docker compose up -d
+#
+#
+# Update
+#
+# docker compose pull
+# docker compose down
+# docker compose up -d
+
+services:
+  server:
+    image: n8nio/n8n:latest
+    restart: on-failure
+    volumes:
+      - ./data:/home/node/.n8n
+      - /usr/local/lib/node_modules/ytdl-core:/usr/local/lib/node_modules/ytdl-core
+    stop_grace_period: 1m
+    ports:
+      - LOCAL_PORT:443
+    environment:
+      - PUID=1000
+      - GUID=1000
+      - N8N_HOST=SUBDOMAIN.DOMAIN.TLD
+      - N8N_PORT=443
+      - WEBHOOK_URL=https://SUBDOMAIN.DOMAIN.TLD/
+      - N8N_SECURE_COOKIE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      # Configure if you want to allow all builtin Node functions for custom code
+      # - NODE_FUNCTION_ALLOW_BUILTIN=*
+      # Needed to allow for ytdl-core
+      # - NODE_FUNCTION_ALLOW_EXTERNAL=ytdl-core
+      # Change runner memory
+      - N8N_RUNNERS_MAX_OLD_SPACE_SIZE=8192
+    container_name: n8n_server_1
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '4.0'
+          memory: 8G
+    networks:
+      default:
+        ipv4_address: 172.20.0.2
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
