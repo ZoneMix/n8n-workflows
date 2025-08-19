@@ -6,6 +6,12 @@ This is a repository to share how I use n8n. I've included a `docker-compose.yml
 In `workflows`, you will see example workflows I've created. The images below show some of them. If you want to use or edit these workflows, just copy and paste the JSON data right into a n8n workflow!
 
 ## Upload Sermons to PCO
+If using the [Planning Center n8n Node](https://github.com/ZoneMix/n8n-nodes-planning-center), be sure to install the [community node](https://www.npmjs.com/package/n8n-nodes-planning-center?activeTab=readme)!
+
+<img width="671" height="475" alt="image" src="https://github.com/user-attachments/assets/11bb4746-df42-4616-a515-22bb3b4db996" />
+
+<img width="1774" height="261" alt="image" src="https://github.com/user-attachments/assets/4bfb5697-03eb-40f1-b79c-880e3416af72" />
+
 <img width="1688" height="977" alt="image" src="https://github.com/user-attachments/assets/12539869-1a2c-42b8-b95f-2a67acc7bb5f" />
 
 ## Upload Sermon Audio to S3
