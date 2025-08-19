@@ -1,0 +1,135 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "6f97b7a4-9654-41f9-b9ad-074a2c0a4b05",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "command": "=curl -s -u :NTFY_TOKEN -d \"{{ $json.message }}\" https://SUBDOMAIN.DOMAIN.TLD/TOPIC_HERE"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        16,
+        0
+      ],
+      "id": "e5239e8a-293f-4c36-86d7-e347823c849a",
+      "name": "Push Notification to Ntfy"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "038a4e3d-fab2-40d9-9452-f0ef346d14cd",
+              "name": "stdout",
+              "value": "={{ $json.stdout }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "92e5ffe8-7ce0-41a6-8d39-a2510e302da8",
+      "name": "Change stdout to Object"
+    },
+    {
+      "parameters": {
+        "command": "=echo -n {{ $json.stdout.topic }} | sha256sum | cut -d ' ' -f1"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        464,
+        0
+      ],
+      "id": "da017a3b-7411-4caa-bd78-739fb1de4bb9",
+      "name": "Create SHA256 Hash of Topic"
+    },
+    {
+      "parameters": {
+        "command": "=curl -X POST -H \"X-Poll-ID: {{ $('Change stdout to Object').item.json.stdout.id }}\" https://ntfy.sh/{{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        688,
+        0
+      ],
+      "id": "81fd27ac-1b63-4331-b344-0d2f244ac2fe",
+      "name": "Instant Notification to iOS"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Push Notification to Ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push Notification to Ntfy": {
+      "main": [
+        [
+          {
+            "node": "Change stdout to Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change stdout to Object": {
+      "main": [
+        [
+          {
+            "node": "Create SHA256 Hash of Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SHA256 Hash of Topic": {
+      "main": [
+        [
+          {
+            "node": "Instant Notification to iOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
