@@ -6,10 +6,33 @@
       "typeVersion": 1,
       "position": [
         0,
-        0
+        96
       ],
       "id": "0368d176-3e8f-453a-91a9-d106fb8e3e26",
       "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $json.links.self }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "planningCenterOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        168
+      ],
+      "id": "69c149e3-d2c5-4f1d-aa8d-96dc213724e6",
+      "name": "Delete Episode",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
     },
     {
       "parameters": {
@@ -20,11 +43,11 @@
       "type": "n8n-nodes-planning-center.planningCenter",
       "typeVersion": 1,
       "position": [
-        208,
-        0
+        224,
+        96
       ],
       "id": "74a202e5-1fba-4fe3-adde-674e2c717512",
-      "name": "Get many episodes",
+      "name": "Get Episodes",
       "alwaysOutputData": true,
       "credentials": {
         "planningCenterOAuth2Api": {
@@ -40,11 +63,11 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        416,
-        0
+        448,
+        96
       ],
       "id": "5ef6de3b-48b1-4517-9024-95ffc231af6b",
-      "name": "Loop Over Items"
+      "name": "Loop Objects"
     },
     {
       "parameters": {
@@ -74,34 +97,98 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        608,
-        80
+        672,
+        96
       ],
       "id": "eb1a5190-aee6-4534-90dc-d19ca5bd8667",
-      "name": "If"
+      "name": "If Episode Exists"
     },
     {
       "parameters": {
-        "method": "DELETE",
-        "url": "={{ $json.links.self }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "planningCenterOAuth2Api",
+        "workflowId": {
+          "__rl": true,
+          "value": "mTFh8Bp4N7hrB9G6",
+          "mode": "list",
+          "cachedResultName": "Push to Ntfy"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Delete PCO Episodes Execution Complete – {{ $now.format('yyyy-MM-dd' | t) }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
       "position": [
-        864,
-        64
+        672,
+        -96
       ],
-      "id": "69c149e3-d2c5-4f1d-aa8d-96dc213724e6",
-      "name": "Delete Episode",
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
+      "id": "9c7bb49d-3fbe-4391-bc11-1f16a6c8c1ac",
+      "name": "Ntfy – End",
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9jnWLGeQN5qW9zs2",
+          "mode": "list",
+          "cachedResultName": "Message to Discord Webhook"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Delete PCO Episodes Execution Complete – {{ $now.format('yyyy-MM-dd' | t) }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "09e62fc6-c255-409c-a8c1-855e7f9f5c70",
+      "name": "Discord Webhook – End",
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -109,41 +196,7 @@
       "main": [
         [
           {
-            "node": "Get many episodes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get many episodes": {
-      "main": [
-        [
-          {
-            "node": "Loop Over Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Loop Over Items": {
-      "main": [
-        [],
-        [
-          {
-            "node": "If",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If": {
-      "main": [
-        [
-          {
-            "node": "Delete Episode",
+            "node": "Get Episodes",
             "type": "main",
             "index": 0
           }
@@ -154,7 +207,58 @@
       "main": [
         [
           {
-            "node": "Loop Over Items",
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Episodes": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Objects": {
+      "main": [
+        [
+          {
+            "node": "Ntfy – End",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Episode Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Episode Exists": {
+      "main": [
+        [
+          {
+            "node": "Delete Episode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ntfy – End": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook – End",
             "type": "main",
             "index": 0
           }
