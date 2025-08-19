@@ -1,0 +1,938 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/sites/YOUR_SITE.sharepoint.com:/sites/YOUR_SITE",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Set Graph Token').item.json.graphToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3040,
+        -1120
+      ],
+      "id": "a51e3d60-496f-4ba5-9bad-0b2c4f99764f",
+      "name": "Get SharePoint Site ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  const siteId = item.json.id; // e.g., \"yourcompany.sharepoint.com,guid1,guid2\"\n  if (!siteId) {\n    throw new Error(\"Site ID not found in input\");\n  }\n\n  // Split the site ID into an array\n  const idParts = siteId.split(\",\");\n\n  // Create output with all parts and optionally specific ones\n  result.push({\n    json: {\n      hostname: idParts[0],           // e.g., \"yourcompany.sharepoint.com\"\n      siteCollectionId: idParts[1],   // First GUID\n      siteId: idParts[2],             // Second GUID\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        -1120
+      ],
+      "id": "d56342ca-6a47-45e0-b3b8-e46e82befb91",
+      "name": "Create SharePoint Site ID Object"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bc288842-4ee6-4443-9fdb-1579b37e7a73",
+              "leftValue": "={{ $json.exitCode }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2816,
+        -1120
+      ],
+      "id": "6dfe7b55-c705-4e9d-a3b9-e7e99e6878c3",
+      "name": "If Deleted Video, Loop, Else, Continue"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                4
+              ],
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        -960
+      ],
+      "id": "59ed39b7-d6c2-4984-abbd-d7fa34be1ba0",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "koZ28b7PZsvtUxhe",
+          "mode": "list",
+          "cachedResultName": "Microsoft Graph API Token Refresh"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2144,
+        -1248
+      ],
+      "id": "932b3569-a3f3-4b91-895f-20d4f52925f2",
+      "name": "Refresh Token",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "command": "cat /home/node/.n8n/.graph_token"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        -1360
+      ],
+      "id": "fa6baed2-7e76-4c4c-baf6-d0f66deb69d3",
+      "name": "Get Graph API Token"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n  let videoId = item.json.contentDetails.videoId;\n\n  result.push({\n    json: {\n      fileName: fileName,\n      videoId: videoId\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -1360
+      ],
+      "id": "0966c3f3-fe79-445f-a053-b072be2cac0c",
+      "name": "Parse Object"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bfec026-33a6-47b1-9a79-09d6584499b7",
+              "name": "videoId",
+              "value": "={{ $('Parse Object').item.json.videoId }}",
+              "type": "string"
+            },
+            {
+              "id": "ec0dd61a-0e1a-44fd-9095-e0d987547f96",
+              "name": "uploadUrl",
+              "value": "={{ $json.uploadUrl }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3712,
+        -1120
+      ],
+      "id": "bd68c31c-585d-49cc-8642-b7428a548975",
+      "name": "Get Video ID and Upload URL"
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PLQTZ0tgdpaMQTu1Ehsk72eGcrfCq7_1hJ",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        576,
+        -960
+      ],
+      "id": "6659dcbc-8b23-4c1f-92fa-420504f32ffe",
+      "name": "Get Live Streams",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "y5Vxsu2dISMYnKrO",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -960
+      ],
+      "id": "6b0a0836-44de-4869-a547-1211ab13989a",
+      "name": "Loop Objects"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://graph.microsoft.com/v1.0/sites/SITE_UUID/drive/root:/LIVE_STREAM_AUDIO_PATH/{{ $('Parse Object').item.json.fileName }}.mp3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Graph API Token').item.json.stdout }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2368,
+        -1552
+      ],
+      "id": "7d834791-4c3f-4346-99f5-d013e0d5c316",
+      "name": "Delete Object",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ace82d58-131f-405f-8975-009aff43a22d",
+              "leftValue": "={{ $json.size }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2144,
+        -1456
+      ],
+      "id": "af539c17-8b9c-420e-a525-a6db13638e14",
+      "name": "Delete File if Size 0"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.microsoft.com/v1.0/sites/SITE_UUID/drive/root:/LIVE_STREAM_AUDIO_PATH/{{ $('Parse Object').item.json.fileName }}.mp3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Set Graph Token').item.json.graphToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        -1408
+      ],
+      "id": "4bf1734b-a395-441f-a050-6b197ba66aa2",
+      "name": "Check File Exists in SharePoint",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "69b5ef7f-5174-4fb2-8a97-2dcf1f130e78",
+              "leftValue": "={{ $('Check File Exists in SharePoint').item.json.error.status }}",
+              "rightValue": 401,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        -1408
+      ],
+      "id": "e24af30d-4dae-4c44-b34c-49735b40b0d0",
+      "name": "Refresh Token if Expired"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "885d77ad-e191-4a33-b543-4eac21fea743",
+              "name": "graphToken",
+              "value": "={{ $json.stdout }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        -1408
+      ],
+      "id": "664d03b3-89a2-4a8e-9ec7-10430192c172",
+      "name": "Set Graph Token"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mTFh8Bp4N7hrB9G6",
+          "mode": "list",
+          "cachedResultName": "Push to Ntfy"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Live Stream Audio to Sharepoint – Cannot Delete File {{ $('Parse Object').item.json.fileName }} – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2592,
+        -1552
+      ],
+      "id": "edcdb355-16c3-4a42-921e-5505a88e22a0",
+      "name": "Ntfy – File Deletion",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9jnWLGeQN5qW9zs2",
+          "mode": "list",
+          "cachedResultName": "Message to Discord Webhook"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Live Stream Audio to Sharepoint – Cannot Delete File {{ $('Parse Object').item.json.fileName }} – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2816,
+        -1360
+      ],
+      "id": "1b48344b-b335-4e10-9e34-8815a337e86d",
+      "name": "Discord Webhook – File Deletion",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1507f915-e8ac-4b38-b3e4-53b544a15e7b",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        -1344
+      ],
+      "id": "8e01f909-9251-48bd-877f-548e038e1fe9",
+      "name": "If File Doesn't Exist, Download/Upload"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9jnWLGeQN5qW9zs2",
+          "mode": "list",
+          "cachedResultName": "Message to Discord Webhook"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Live Stream Audio to Sharepoint Execution Completed – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        -1120
+      ],
+      "id": "43f66a17-a241-433e-ab06-0c62f6337ca8",
+      "name": "Discord Webhook – End",
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mTFh8Bp4N7hrB9G6",
+          "mode": "list",
+          "cachedResultName": "Push to Ntfy"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Live Stream Audio to Sharepoint Execution Completed – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        -1120
+      ],
+      "id": "c64793e4-51a3-4ade-8c1b-11eb7e03cf21",
+      "name": "Ntfy – End",
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const https = require('https');\nconst url = require('url'); // For parsing URLs\nconst fs = require('fs');\n\nasync function httpRequest(options, body = null) {\n  return new Promise((resolve, reject) => {\n    const req = https.request(options, (res) => {\n      let data = '';\n      res.on('data', (chunk) => data += chunk);\n      res.on('end', () => {\n        console.log(`Response for bytes ${options.headers['Content-Range']}: Status ${res.statusCode}`);\n        if (res.statusCode >= 400) {\n          reject(new Error(`HTTP ${res.statusCode}: ${data}`));\n        }\n        resolve({\n          status: res.statusCode,\n          body: data ? JSON.parse(data) : {}\n        });\n      });\n    });\n\n    req.on('error', (err) => reject(new Error(`Request failed: ${err.message}`)));\n\n    if (body) {\n      if (typeof body === 'string') {\n        req.write(body);\n        req.end();\n      } else {\n        body.pipe(req);\n        body.on('end', () => req.end());\n        body.on('error', (err) => reject(new Error(`Stream error: ${err.message}`)));\n      }\n    } else {\n      req.end();\n    }\n  });\n}\n\nconst localFilePath = '/tmp/' + $input.first().json.videoId + '.mp3';\nconst uploadUrl = $input.first().json.uploadUrl;\n\nconst stats = fs.statSync(localFilePath);\nconst totalSize = stats.size;\nconst chunkSize = 5 * 1024 * 1024; // 5 MB, multiple of 320 KiB\n\nlet offset = 0;\nlet uploadedBytes = 0;\nlet driveItem = null;\n\nconsole.log(`Starting upload. Total size: ${totalSize} bytes, uploadUrl: ${uploadUrl}`);\n\n// Parse uploadUrl using url module\nconst uploadUrlParsed = url.parse(uploadUrl);\nif (!uploadUrlParsed.hostname || !uploadUrlParsed.pathname) {\n  throw new Error(`Invalid uploadUrl: ${uploadUrl}`);\n}\n\nconst baseOptions = {\n  hostname: uploadUrlParsed.hostname,\n  path: uploadUrlParsed.pathname + (uploadUrlParsed.search || ''),\n  method: 'PUT'\n};\n\nwhile (true) {\n  const start = offset;\n  if (start >= totalSize) {\n    break;\n  }\n  const end = Math.min(start + chunkSize - 1, totalSize - 1);\n  const chunkLength = end - start + 1;\n  const readStream = fs.createReadStream(localFilePath, { start, end }); // end is inclusive\n\n  const uploadOptions = {\n    ...baseOptions,\n    headers: {\n      'Content-Range': `bytes ${start}-${end}/${totalSize}`,\n      'Content-Length': chunkLength\n    }\n  };\n\n  console.log(`Uploading chunk: ${uploadOptions.headers['Content-Range']}, Host: ${uploadOptions.hostname}, Path: ${uploadOptions.path}`);\n\n  try {\n    const { status, body } = await httpRequest(uploadOptions, readStream);\n    uploadedBytes += chunkLength;\n    console.log(`Successfully uploaded chunk: bytes ${start}-${end}/${totalSize}, status: ${status}`);\n\n    if (status === 201 || status === 200) {\n      driveItem = body;\n      break;\n    } else if (status === 202) {\n      if (!body.nextExpectedRanges || body.nextExpectedRanges.length === 0) {\n        // Upload complete, but no driveItem? Unlikely, but break\n        break;\n      } else {\n        const rangeStr = body.nextExpectedRanges[0];\n        const parts = rangeStr.split('-');\n        offset = parseInt(parts[0]);\n        let maxEnd = totalSize - 1;\n        if (parts[1] && parts[1] !== '') {\n          maxEnd = parseInt(parts[1]) - 1;\n        }\n        // In the next iteration, end will be min(start + chunkSize - 1, totalSize - 1)\n        // But to respect maxEnd:\n        if (offset > maxEnd) {\n          break;\n        }\n      }\n    } else {\n      throw new Error(`Unexpected status code: ${status}`);\n    }\n  } catch (err) {\n    throw new Error(`Chunk upload failed at bytes ${start}-${end}: ${err.message}`);\n  }\n}\n\nconst result = [{\n  json: {\n    success: true,\n    message: `File uploaded successfully. Total bytes: ${uploadedBytes}`,\n    driveItem: driveItem || {}\n  }\n}];\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3936,
+        -1120
+      ],
+      "id": "c1928d82-ddad-4ac1-9233-b5d4c1a1c03c",
+      "name": "Upload File in Chunks"
+    },
+    {
+      "parameters": {
+        "command": "=rm /tmp/{{ $('Parse Object').item.json.videoId }}.mp3"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        4160,
+        -960
+      ],
+      "id": "cd7a58d4-5280-4d1f-bc9d-73d26344c34c",
+      "name": "Delete Local File",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/sites/{{ $json.siteCollectionId }}/drive/items/FOLDER_ID:/{{ $('Parse Object').item.json.fileName }}.mp3:/createUploadSession",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Set Graph Token').item.json.graphToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3488,
+        -1120
+      ],
+      "id": "652f0236-ae0d-44f4-aa22-8795727dd0f1",
+      "name": "Create Upload Session"
+    },
+    {
+      "parameters": {
+        "command": "=yt-dlp -t mp3 -o \"/tmp/%(id)s.%(ext)s\" --embed-metadata --embed-thumbnail https://www.youtube.com/watch?v={{ $('Parse Object').item.json.videoId }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        -1344
+      ],
+      "id": "2b8b7050-c491-4d1c-ab8a-e48f84004257",
+      "name": "Download Video/Audio Locally",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Get SharePoint Site ID": {
+      "main": [
+        [
+          {
+            "node": "Create SharePoint Site ID Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create SharePoint Site ID Object": {
+      "main": [
+        [
+          {
+            "node": "Create Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Deleted Video, Loop, Else, Continue": {
+      "main": [
+        [
+          {
+            "node": "Get SharePoint Site ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Live Streams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Token": {
+      "main": [
+        [
+          {
+            "node": "Get Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Graph API Token": {
+      "main": [
+        [
+          {
+            "node": "Set Graph Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Object": {
+      "main": [
+        [
+          {
+            "node": "Get Graph API Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video ID and Upload URL": {
+      "main": [
+        [
+          {
+            "node": "Upload File in Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Live Streams": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Objects": {
+      "main": [
+        [
+          {
+            "node": "Ntfy – End",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Object": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ntfy – File Deletion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete File if Size 0": {
+      "main": [
+        [
+          {
+            "node": "Delete Object",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If File Doesn't Exist, Download/Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check File Exists in SharePoint": {
+      "main": [
+        [
+          {
+            "node": "Refresh Token if Expired",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Refresh Token if Expired": {
+      "main": [
+        [
+          {
+            "node": "Refresh Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete File if Size 0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Graph Token": {
+      "main": [
+        [
+          {
+            "node": "Check File Exists in SharePoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ntfy – File Deletion": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook – File Deletion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Webhook – File Deletion": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File Doesn't Exist, Download/Upload": {
+      "main": [
+        [
+          {
+            "node": "Download Video/Audio Locally",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ntfy – End": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook – End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload File in Chunks": {
+      "main": [
+        [
+          {
+            "node": "Delete Local File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Local File": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Get Video ID and Upload URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video/Audio Locally": {
+      "main": [
+        [
+          {
+            "node": "If Deleted Video, Loop, Else, Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
