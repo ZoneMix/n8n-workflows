@@ -1,6 +1,6 @@
 # n8n Workflows
 
-This is a repository to share how I use n8n. I've included a `docker-compose.yml` file and `data`.
+This is a repository to share how I use n8n. I've included a `docker-compose.yml` file and `data`. If you plan to use this n8n configuration, be sure to edit the compose file and follow instructions. I also use a cloudflare tunnel to make the subdomain available, so the networking may need to change based on your network/hosting setup.
 
 # Workflow Examples
 Just copy and paste the JSON right into n8n!
