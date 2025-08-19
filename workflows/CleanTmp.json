@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                6
+              ],
+              "triggerAtHour": 23
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "33f32cdf-c163-4771-8170-a44616503579",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "command": "rm /tmp/*"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e0f1ca01-bdc6-4f45-8c9d-5dcd723c71aa",
+      "name": "Execute Command",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
