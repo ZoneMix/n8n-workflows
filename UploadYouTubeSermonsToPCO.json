@@ -2,108 +2,6 @@
   "nodes": [
     {
       "parameters": {
-        "command": "=curl -u :NTFY_TOKEN -d \"Sermons Uploaded to Planning Center\" https://ntfy.domain.tld/topic_name"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        384,
-        -400
-      ],
-      "id": "f0b87f8c-55cc-4533-a504-c9ba754a1e75",
-      "name": "Push Notification to Ntfy"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "038a4e3d-fab2-40d9-9452-f0ef346d14cd",
-              "name": "stdout",
-              "value": "={{ $json.stdout }}",
-              "type": "object"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        608,
-        -400
-      ],
-      "id": "51aac561-6208-4f2f-81bf-330fffa5e1ee",
-      "name": "Change stdout to Object"
-    },
-    {
-      "parameters": {
-        "command": "=echo -n {{ $json.stdout.topic }} | sha256sum | cut -d ' ' -f1"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        832,
-        -400
-      ],
-      "id": "1ef4eddd-3cc4-4bad-b92b-057ab6632729",
-      "name": "Create SHA256 Hash of Topic"
-    },
-    {
-      "parameters": {
-        "command": "=curl -X POST -H \"X-Poll-ID: {{ $('Change stdout to Object').item.json.stdout.id }}\" https://ntfy.sh/{{ $json.stdout }}"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        1056,
-        -400
-      ],
-      "id": "23b288d9-17a6-4219-ad81-7adeb89780b3",
-      "name": "Instant Notification to iOS"
-    },
-    {
-      "parameters": {
-        "resource": "playlistItem",
-        "operation": "getAll",
-        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
-        "returnAll": true,
-        "options": {
-          "onBehalfOfContentOwner": ""
-        }
-      },
-      "type": "n8n-nodes-base.youTube",
-      "typeVersion": 1,
-      "position": [
-        -288,
-        -256
-      ],
-      "id": "b8253bce-106e-4595-8b91-db121da719f6",
-      "name": "Get all Sermon Objects",
-      "credentials": {
-        "youTubeOAuth2Api": {
-          "id": "y5Vxsu2dISMYnKrO",
-          "name": "YouTube account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "options": {
-          "reset": false
-        }
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        160,
-        -256
-      ],
-      "id": "d5ead11c-6c18-4710-be63-78f878fdbf98",
-      "name": "Loop Sermon Objects"
-    },
-    {
-      "parameters": {
         "rule": {
           "interval": [
             {
@@ -126,153 +24,9 @@
     },
     {
       "parameters": {
-        "operation": "createPerson",
-        "firstName": "={{ $('Parse YouTube Description Data').item.json.speaker.split(' ')[0] }}",
-        "lastName": "={{ $('Parse YouTube Description Data').item.json.speaker.split(' ')[1] }}"
-      },
-      "type": "n8n-nodes-planning-center.planningCenter",
-      "typeVersion": 1,
-      "position": [
-        3072,
-        -496
-      ],
-      "id": "930a0563-108b-40aa-8fd8-0c84827f6eee",
-      "name": "Create a person",
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n  let description = item.json.snippet.description.split('\\n');\n  let sermon_title = description[0];\n  let scripture = description[1];\n  let series = description[2].split(':')[1].trimStart();\n  let speaker = description[3];\n  let date = description[4];\n  let cleanDate = date.replace(/(st|nd|rd|th),/,'');\n  let parseDate = new Date(cleanDate).toISOString().split('T')[0];\n\n  result.push({\n    json: {\n      fileName: fileName,\n      description: item.json.snippet.description,\n      sermonTitle: sermon_title,\n      scripture: scripture,\n      series: series,\n      speaker: speaker,\n      date: parseDate\n    }\n  });\n}\n\nreturn result;"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        384,
-        -592
-      ],
-      "id": "a99a4be1-4c8d-4473-9ebc-52136ada2b12",
-      "name": "Parse YouTube Description Data"
-    },
-    {
-      "parameters": {
-        "command": "=curl \"https://S3_BUCKET_NAME.s3.us-east-1.amazonaws.com/S3_AUDIO_FILE_PATH/{{ encodeURIComponent($json.fileName) }}.mp3\" -I -s | head -n1 | cut -d ' ' -f2"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        608,
-        -592
-      ],
-      "id": "04e9defa-ff45-40c8-b6de-d14b116f4c88",
-      "name": "Check if Sermon Audio Exists in S3"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "2b850256-5af7-48bf-807d-82390c8b2749",
-              "leftValue": "={{ $json.stdout }}",
-              "rightValue": "200",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        832,
-        -592
-      ],
-      "id": "b1e6bded-10fc-49c3-a4e8-2916a74fa29e",
-      "name": "If true, create PCO sermon episode",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "peopleFilters": {
-          "whereFilters": [
-            {
-              "field": "search_name",
-              "stringValue": "={{ $('Parse YouTube Description Data').item.json.speaker }}"
-            }
-          ]
-        },
-        "limit": 1
-      },
-      "type": "n8n-nodes-planning-center.planningCenter",
-      "typeVersion": 1,
-      "position": [
-        2624,
-        -592
-      ],
-      "id": "c335e623-a50c-4998-b8c3-02ef3c541a69",
-      "name": "Get Speaker's Person ID",
-      "alwaysOutputData": true,
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "17284c8e-d721-4b6e-b531-2336ec03859b",
-              "leftValue": "={{ $json }}",
-              "rightValue": "",
-              "operator": {
-                "type": "object",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2848,
-        -592
-      ],
-      "id": "7bdf3890-5198-4228-a4e9-947a297464c3",
-      "name": "Create Person if they do not exist",
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
         "resource": "publishing",
         "operation": "getManySeries",
-        "search": "={{ $('Parse YouTube Description Data').item.json.series }}",
+        "search": "={{ $('Parse Object').item.json.series }}",
         "limit": 1
       },
       "type": "n8n-nodes-planning-center.planningCenter",
@@ -284,63 +38,6 @@
       "id": "335dda87-8f99-4722-93e3-63dbe2d5abba",
       "name": "Get Series",
       "alwaysOutputData": true,
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "82661341-bed0-48de-90ec-bd9eec74454a",
-              "leftValue": "={{  $json }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "object",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1280,
-        -592
-      ],
-      "id": "03454500-7a5d-4737-b549-8a6cd4401064",
-      "name": "Create Series if it does not exist",
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
-        "resource": "publishing",
-        "operation": "getChannel",
-        "channelId": "24129"
-      },
-      "type": "n8n-nodes-planning-center.planningCenter",
-      "typeVersion": 1,
-      "position": [
-        1504,
-        -496
-      ],
-      "id": "399e2704-b534-4590-961e-2539bdadccaf",
-      "name": "Get a channel",
-      "alwaysOutputData": false,
       "credentials": {
         "planningCenterOAuth2Api": {
           "id": "xm4x02y4E7ffCKIT",
@@ -468,7 +165,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"data\": {\n    \"attributes\": {\n      \"title\": \"{{ $('Parse YouTube Description Data').item.json.series }}\"\n    }\n  }\n}",
+        "jsonBody": "={\n  \"data\": {\n    \"attributes\": {\n      \"title\": \"{{ $('Parse Object').item.json.series }}\"\n    }\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -479,34 +176,6 @@
       ],
       "id": "91d3bb26-75b7-4ac4-92b2-6d9f5b3e5909",
       "name": "Update Series Title",
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "publishing",
-        "channelId": "24129",
-        "seriesId": "={{ $('createSeriesId').item.json.seriesId[0] }}",
-        "title": "={{ $('Get all Sermon Objects').item.json.snippet.title }}",
-        "description": "={{ $('Parse YouTube Description Data').item.json.description }}",
-        "streamType": "channel_default_livestream",
-        "videoUrl": "=",
-        "publishedToLibraryAt": "={{ $now }}",
-        "libraryAudioUrl": "=https://S3_BUCKET_NAME.s3.us-east-1.amazonaws.com/S3_AUDIO_FILE_PATH/{{ encodeURIComponent($('Parse YouTube Description Data').item.json.fileName) }}.mp3",
-        "libraryVideoUrl": "=https://youtube.com/watch?v={{ $('Get all Sermon Objects').item.json.contentDetails.videoId }}"
-      },
-      "type": "n8n-nodes-planning-center.planningCenter",
-      "typeVersion": 1,
-      "position": [
-        3968,
-        -592
-      ],
-      "id": "8ee74a71-ed69-4004-b6ec-d7127a0388a0",
-      "name": "Create an episode",
       "credentials": {
         "planningCenterOAuth2Api": {
           "id": "xm4x02y4E7ffCKIT",
@@ -551,29 +220,7 @@
     },
     {
       "parameters": {
-        "resource": "publishing",
-        "operation": "getManyEpisodes",
-        "search": "={{ $('Parse YouTube Description Data').item.json.fileName }}"
-      },
-      "type": "n8n-nodes-planning-center.planningCenter",
-      "typeVersion": 1,
-      "position": [
-        3520,
-        -592
-      ],
-      "id": "07fa5eac-7ab9-4cd2-99a7-c257126849a8",
-      "name": "Get many episodes",
-      "alwaysOutputData": true,
-      "credentials": {
-        "planningCenterOAuth2Api": {
-          "id": "xm4x02y4E7ffCKIT",
-          "name": "Planning Center account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "={{ $('Create an episode').item.json.links.episode_times }}",
+        "url": "={{ $('Create Episode').item.json.links.episode_times }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "planningCenterOAuth2Api",
         "options": {}
@@ -596,7 +243,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $('Create an episode').item.json.links.episode_times }}/{{ $json.data.parseJson().data[0].id }}",
+        "url": "={{ $('Create Episode').item.json.links.episode_times }}/{{ $json.data.parseJson().data[0].id }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "planningCenterOAuth2Api",
         "sendHeaders": true,
@@ -610,17 +257,406 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"data\":{\n    \"attributes\":{\n      \"starts_at\":\"{{ $('Parse YouTube Description Data').item.json.date }}T14:30:00Z\"\n    }\n  }\n}",
+        "jsonBody": "={\n  \"data\":{\n    \"attributes\":{\n      \"starts_at\":\"{{ $('Parse Object').item.json.date }}T14:30:00Z\"\n    }\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         4640,
-        -424
+        -432
       ],
       "id": "bab88d16-8dae-4143-af99-179d1d9e5bc5",
       "name": "Update Live Time to Sermon Date",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
+        "returnAll": true,
+        "options": {
+          "onBehalfOfContentOwner": ""
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -256
+      ],
+      "id": "b8253bce-106e-4595-8b91-db121da719f6",
+      "name": "Get Sermons",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "y5Vxsu2dISMYnKrO",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst reversedItems = items.reverse();\nreturn reversedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -256
+      ],
+      "id": "fc984390-2058-42d3-aec7-056952dc06cc",
+      "name": "Reverse Objects (Old to New)"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        160,
+        -256
+      ],
+      "id": "d5ead11c-6c18-4710-be63-78f878fdbf98",
+      "name": "Loop Objects"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n  let description = item.json.snippet.description.split('\\n');\n  let sermon_title = description[0];\n  let scripture = description[1];\n  let series = description[2].split(':')[1].trimStart();\n  let speaker = description[3];\n  let date = description[4];\n  let cleanDate = date.replace(/(st|nd|rd|th),/,'');\n  let parseDate = new Date(cleanDate).toISOString().split('T')[0];\n\n  result.push({\n    json: {\n      fileName: fileName,\n      description: item.json.snippet.description,\n      sermonTitle: sermon_title,\n      scripture: scripture,\n      series: series,\n      speaker: speaker,\n      date: parseDate\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -592
+      ],
+      "id": "a99a4be1-4c8d-4473-9ebc-52136ada2b12",
+      "name": "Parse Object"
+    },
+    {
+      "parameters": {
+        "command": "=curl \"https://west-center-baptist-sermon-audio.s3.us-east-1.amazonaws.com/audio/{{ encodeURIComponent($json.fileName) }}.mp3\" -I -s | head -n1 | cut -d ' ' -f2"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -592
+      ],
+      "id": "04e9defa-ff45-40c8-b6de-d14b116f4c88",
+      "name": "Check if File Exists in S3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b850256-5af7-48bf-807d-82390c8b2749",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "200",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        -592
+      ],
+      "id": "b1e6bded-10fc-49c3-a4e8-2916a74fa29e",
+      "name": "Create PCO sermon episode if True",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "82661341-bed0-48de-90ec-bd9eec74454a",
+              "leftValue": "={{  $json }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        -592
+      ],
+      "id": "03454500-7a5d-4737-b549-8a6cd4401064",
+      "name": "Create Series if Not Found",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "peopleFilters": {
+          "whereFilters": [
+            {
+              "field": "search_name",
+              "stringValue": "={{ $('Parse Object').item.json.speaker }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        -592
+      ],
+      "id": "c335e623-a50c-4998-b8c3-02ef3c541a69",
+      "name": "Get Speaker Person ID",
+      "alwaysOutputData": true,
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "17284c8e-d721-4b6e-b531-2336ec03859b",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2848,
+        -592
+      ],
+      "id": "7bdf3890-5198-4228-a4e9-947a297464c3",
+      "name": "Create Person if Not Found",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "createPerson",
+        "grade": {},
+        "graduationYear": {},
+        "firstName": "={{ $('Parse Object').item.json.speaker.split(' ')[0] }}",
+        "lastName": "={{ $('Parse Object').item.json.speaker.split(' ')[1] }}"
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        -496
+      ],
+      "id": "930a0563-108b-40aa-8fd8-0c84827f6eee",
+      "name": "Create Person",
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "publishing",
+        "operation": "getChannel",
+        "channelId": "24129"
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        -496
+      ],
+      "id": "399e2704-b534-4590-961e-2539bdadccaf",
+      "name": "Get Channel",
+      "alwaysOutputData": false,
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mTFh8Bp4N7hrB9G6",
+          "mode": "list",
+          "cachedResultName": "Push to Ntfy"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Upload Sermons to PCO Execution Complete – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -400
+      ],
+      "id": "e05416c6-40f9-41f7-a8cb-ad7a4a776a3f",
+      "name": "Ntfy – End"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9jnWLGeQN5qW9zs2",
+          "mode": "list",
+          "cachedResultName": "Message to Discord Webhook"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Upload Sermons to PCO Execution Complete – {{ $now.format('yyyy-MM-dd | t') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        -400
+      ],
+      "id": "264d12df-f856-4e5e-9fb4-96f6886c9be5",
+      "name": "Discord Webhook – End"
+    },
+    {
+      "parameters": {
+        "resource": "publishing",
+        "operation": "getManyEpisodes",
+        "search": "={{ $('Parse Object').item.json.fileName }}"
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        -592
+      ],
+      "id": "07fa5eac-7ab9-4cd2-99a7-c257126849a8",
+      "name": "Find Episode",
+      "alwaysOutputData": true,
+      "credentials": {
+        "planningCenterOAuth2Api": {
+          "id": "xm4x02y4E7ffCKIT",
+          "name": "Planning Center account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "publishing",
+        "channelId": "24129",
+        "seriesId": "={{ $('createSeriesId').item.json.seriesId[0] }}",
+        "title": "={{ $('Get Sermons').item.json.snippet.title }}",
+        "description": "={{ $('Parse Object').item.json.description }}",
+        "streamType": "channel_default_livestream",
+        "videoUrl": "=",
+        "publishedToLibraryAt": "={{ $('Parse Object').item.json.date }}T14:30:00Z",
+        "libraryAudioUrl": "=https://S3_BUCKET_NAME.s3.us-east-1.amazonaws.com/PATH_TO_AUDIO/{{ encodeURIComponent($('Parse Object').item.json.fileName) }}.mp3",
+        "libraryVideoUrl": "=https://youtube.com/watch?v={{ $('Get Sermons').item.json.contentDetails.videoId }}"
+      },
+      "type": "n8n-nodes-planning-center.planningCenter",
+      "typeVersion": 1,
+      "position": [
+        3968,
+        -592
+      ],
+      "id": "8ee74a71-ed69-4004-b6ec-d7127a0388a0",
+      "name": "Create Episode",
       "credentials": {
         "planningCenterOAuth2Api": {
           "id": "xm4x02y4E7ffCKIT",
@@ -660,170 +696,15 @@
         -592
       ],
       "id": "784826a9-a98e-4148-9f2c-a80af16a4ae9",
-      "name": "If episode exists, continue loop"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst reversedItems = items.reverse();\nreturn reversedItems;"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -64,
-        -256
-      ],
-      "id": "fc984390-2058-42d3-aec7-056952dc06cc",
-      "name": "Reverse List for Oldest to Newest"
+      "name": "Create Episode if Not Found"
     }
   ],
   "connections": {
-    "Push Notification to Ntfy": {
-      "main": [
-        [
-          {
-            "node": "Change stdout to Object",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Change stdout to Object": {
-      "main": [
-        [
-          {
-            "node": "Create SHA256 Hash of Topic",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create SHA256 Hash of Topic": {
-      "main": [
-        [
-          {
-            "node": "Instant Notification to iOS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get all Sermon Objects": {
-      "main": [
-        [
-          {
-            "node": "Reverse List for Oldest to Newest",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Loop Sermon Objects": {
-      "main": [
-        [
-          {
-            "node": "Push Notification to Ntfy",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Parse YouTube Description Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Schedule Trigger": {
       "main": [
         [
           {
-            "node": "Get all Sermon Objects",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create a person": {
-      "main": [
-        [
-          {
-            "node": "Create speakerId",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse YouTube Description Data": {
-      "main": [
-        [
-          {
-            "node": "Check if Sermon Audio Exists in S3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check if Sermon Audio Exists in S3": {
-      "main": [
-        [
-          {
-            "node": "If true, create PCO sermon episode",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If true, create PCO sermon episode": {
-      "main": [
-        [
-          {
-            "node": "Get Series",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Loop Sermon Objects",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Speaker's Person ID": {
-      "main": [
-        [
-          {
-            "node": "Create Person if they do not exist",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Person if they do not exist": {
-      "main": [
-        [
-          {
-            "node": "Create speakerId",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Create a person",
+            "node": "Get Sermons",
             "type": "main",
             "index": 0
           }
@@ -834,36 +715,7 @@
       "main": [
         [
           {
-            "node": "Create Series if it does not exist",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Series if it does not exist": {
-      "main": [
-        [
-          {
-            "node": "createSeriesId",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get a channel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get a channel": {
-      "main": [
-        [
-          {
-            "node": "Create n8n Series",
+            "node": "Create Series if Not Found",
             "type": "main",
             "index": 0
           }
@@ -874,7 +726,7 @@
       "main": [
         [
           {
-            "node": "Get many episodes",
+            "node": "Find Episode",
             "type": "main",
             "index": 0
           }
@@ -907,7 +759,7 @@
       "main": [
         [
           {
-            "node": "Get Speaker's Person ID",
+            "node": "Get Speaker Person ID",
             "type": "main",
             "index": 0
           }
@@ -925,33 +777,11 @@
         ]
       ]
     },
-    "Create an episode": {
-      "main": [
-        [
-          {
-            "node": "Update Speaker for Episode",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Update Speaker for Episode": {
       "main": [
         [
           {
             "node": "Get Episode Time Object",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get many episodes": {
-      "main": [
-        [
-          {
-            "node": "If episode exists, continue loop",
             "type": "main",
             "index": 0
           }
@@ -973,36 +803,207 @@
       "main": [
         [
           {
-            "node": "Loop Sermon Objects",
+            "node": "Loop Objects",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If episode exists, continue loop": {
+    "Get Sermons": {
       "main": [
         [
           {
-            "node": "Loop Sermon Objects",
+            "node": "Reverse Objects (Old to New)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reverse Objects (Old to New)": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Objects": {
+      "main": [
+        [
+          {
+            "node": "Ntfy – End",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Create an episode",
+            "node": "Parse Object",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Reverse List for Oldest to Newest": {
+    "Parse Object": {
       "main": [
         [
           {
-            "node": "Loop Sermon Objects",
+            "node": "Check if File Exists in S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if File Exists in S3": {
+      "main": [
+        [
+          {
+            "node": "Create PCO sermon episode if True",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create PCO sermon episode if True": {
+      "main": [
+        [
+          {
+            "node": "Get Series",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Series if Not Found": {
+      "main": [
+        [
+          {
+            "node": "createSeriesId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Speaker Person ID": {
+      "main": [
+        [
+          {
+            "node": "Create Person if Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Person if Not Found": {
+      "main": [
+        [
+          {
+            "node": "Create speakerId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Person": {
+      "main": [
+        [
+          {
+            "node": "Create speakerId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Channel": {
+      "main": [
+        [
+          {
+            "node": "Create n8n Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ntfy – End": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook – End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Episode": {
+      "main": [
+        [
+          {
+            "node": "Create Episode if Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Episode": {
+      "main": [
+        [
+          {
+            "node": "Update Speaker for Episode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Episode if Not Found": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Episode",
             "type": "main",
             "index": 0
           }
