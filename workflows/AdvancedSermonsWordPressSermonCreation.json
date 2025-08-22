@@ -1,0 +1,1275 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let fileName = item.json.snippet.title;\n  fileName = fileName.replaceAll(':','_');\n  fileName = fileName.replaceAll('?','');\n  let description = item.json.snippet.description.split('\\n');\n  let sermon_title = description[0];\n  let scripture = description[1];\n  let series = description[2].split(':')[1].trimStart();\n  let speaker = description[3];\n  let date = description[4];\n  let cleanDate = date.replace(/(st|nd|rd|th),/,'');\n  let parseDate = new Date(cleanDate).toISOString().split('T')[0];\n  let yt_url = \"https://youtube.com/watch?v=\" + item.json.contentDetails.videoId;\n  let image_url = item.json.snippet.thumbnails.maxres.url;\n\n  result.push({\n    json: {\n      fileName: fileName,\n      description: item.json.snippet.description,\n      sermonTitle: sermon_title,\n      scripture: scripture,\n      series: series,\n      speaker: speaker,\n      date: parseDate,\n      yt_url: yt_url,\n      image_url: image_url\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        80
+      ],
+      "id": "df86eea5-fd1f-4319-9539-693158c82587",
+      "name": "Parse Object"
+    },
+    {
+      "parameters": {
+        "jsCode": "const https = require('https');\nconst url = require('url');\nconst fs = require('fs');\n\nasync function fetchSermons() {\n  let allSermons = [];\n  let page = 1;\n  let totalPages = 1;\n\n  do {\n    const apiUrl = $input.first().json.aswp_url + `/sermons?per_page=100&page=${page}`;\n    const parsedUrl = url.parse(apiUrl);\n\n    const options = {\n      hostname: parsedUrl.hostname,\n      path: parsedUrl.path,\n      method: 'GET',\n    };\n\n    const sermons = await new Promise((resolve, reject) => {\n      const req = https.get(options, (res) => {\n        let data = '';\n\n        res.on('data', (chunk) => {\n          data += chunk;\n        });\n\n        res.on('end', () => {\n          if (res.statusCode !== 200) {\n            reject(new Error(`HTTP error! status: ${res.statusCode}`));\n            return;\n          }\n\n          try {\n            const jsonData = JSON.parse(data);\n            if (page === 1) {\n              totalPages = parseInt(res.headers['x-wp-totalpages'], 10) || 1;\n            }\n            resolve(jsonData);\n          } catch (error) {\n            reject(new Error(`JSON parse error: ${error.message}`));\n          }\n        });\n      });\n\n      req.on('error', (error) => {\n        reject(error);\n      });\n\n      req.end();\n    });\n\n    allSermons = allSermons.concat(sermons);\n    page++;\n  } while (page <= totalPages);\n\n  // Save to file\n  fs.writeFileSync('/tmp/sermons.json', JSON.stringify(allSermons, null, 2));\n\n  // Return n8n-compatible items\n  return allSermons.map(sermon => ({ json: sermon }));\n}\n\nreturn fetchSermons();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        304
+      ],
+      "id": "a25b4a18-c1ae-4bf4-a5e1-19d21f947b7a",
+      "name": "Get Sermons on WP",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 5,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "title.rendered",
+              "renameField": true,
+              "outputFieldName": "title"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        304
+      ],
+      "id": "c66fe9e3-3f06-4135-9c7d-2804023bc652",
+      "name": "Parse Sermon Titles"
+    },
+    {
+      "parameters": {
+        "jsCode": "function unescapeHTML(str) {\n  if (typeof str !== 'string') {\n    return '';\n  }\n  const htmlEntities = {\n    '&amp;': '&',\n    '&lt;': '<',\n    '&gt;': '>',\n    '&quot;': '\"',\n    '&#39;': \"'\",\n    '&#8217;': \"'\",\n    '&apos;': \"'\",\n    '&nbsp;': ' ',\n    '&copy;': '©',\n    '&reg;': '®'\n  };\n  return str.replace(/&[#a-zA-Z0-9]+;/g, match => {\n    if (htmlEntities[match]) {\n      return htmlEntities[match];\n    }\n    if (match.match(/^&#\\d+;/)) {\n      const code = parseInt(match.slice(2, -1), 10);\n      return String.fromCharCode(code);\n    }\n    if (match.match(/^&#x[0-9a-fA-F]+;/)) {\n      const code = parseInt(match.slice(3, -1), 16);\n      return String.fromCharCode(code);\n    }\n    return match;\n  });\n}\n\nconst titles = $input.first().json.title || [];\nconst decodedTitles = titles.map(title => unescapeHTML(title).replaceAll('–','-'));\n\nreturn [{ json: { title: decodedTitles } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        304
+      ],
+      "id": "17b12d8e-39e3-413c-9acc-3efff821f418",
+      "name": "Fix Sermon Titles"
+    },
+    {
+      "parameters": {
+        "resource": "playlistItem",
+        "operation": "getAll",
+        "playlistId": "PLQTZ0tgdpaMTKJ7ll2EGJo2wB5r1Nk7o-",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        80,
+        304
+      ],
+      "id": "dd80a65d-01e4-4b48-ad97-dbaa5866d731",
+      "name": "Get YT Sermons",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "y5Vxsu2dISMYnKrO",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        304,
+        304
+      ],
+      "id": "81fdf750-98d9-4e2f-a01e-c40276cb817c",
+      "name": "Loop Objects"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10709152-a76d-4dd7-bc9b-da8875b0166c",
+              "leftValue": "={{ $('Fix Sermon Titles').first().json.title.includes($('Get YT Sermons').item.json.snippet.title.replaceAll('–','-')) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        80
+      ],
+      "id": "6fbe54ed-6d8f-4279-89fd-7a0d5a03f39b",
+      "name": "If WP Sermon Exists, Continue"
+    },
+    {
+      "parameters": {
+        "url": "LINK_TO_PODCAST_XML",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        80
+      ],
+      "id": "6826f12d-6bc4-4f53-a859-14b39eb3339b",
+      "name": "Get Podcast Episodes"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        80
+      ],
+      "id": "000b4e9c-fda4-455f-841e-b2e0692c3848",
+      "name": "Podcast XML to JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.rss.channel.item;\n\nconst targetTitle = $('Parse Object').first().json.fileName;\n\n// Find the item with the matching title (case-insensitive)\nconst matchedItem = items.find(item => {\n  let parsedTitle = item.title.replaceAll('?','');\n  parsedTitle = parsedTitle.replaceAll(':','_');\n  return parsedTitle === targetTitle;\n});\n\n\n// Return the matching item or an empty object if not found\nif (matchedItem) {\n  return [{\n    json: {\n      title: matchedItem.title,\n      description: matchedItem.description,\n      audioUrl: matchedItem.enclosure.url,\n      pubDate: matchedItem.pubDate\n    }\n  }];\n} else {\n  return [{ json: { error: `No episode found with title \"${targetTitle}\"` } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        80
+      ],
+      "id": "cab299c4-e285-488e-8c27-318515dee656",
+      "name": "Parse Podcast XML",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4055fddd-af80-48b3-b4bb-993888a1ef0c",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        80
+      ],
+      "id": "e4872fd3-3e1c-4e8b-82f4-e4f69309e80d",
+      "name": "If Error, Loop"
+    },
+    {
+      "parameters": {
+        "jsCode": "function createPodcastEmbed(item) {\n  // Extract data from the input item\n  const podcastUrl = item.audioUrl || 'https://example.com/podcast.mp3';\n  const title = item.title || 'Untitled Podcast';\n\n  // Create HTML embed code as a single line\n  const embedCode = `<div style=\"border: 1px solid #ccc; padding: 16px; border-radius: 8px; max-width: 600px; margin: 0 auto;\"><h4 style=\"margin: 0 0 8px 0;\">${title}</h3><audio controls style=\"width: 100%;\"><source src=\"${podcastUrl}\" type=\"audio/mpeg\">Your browser does not support the audio element.</audio></div>`;\n\n  // Escape double quotes for JSON compatibility\n  let escapedEmbedCode = embedCode.replace(/\"/g, '\\\\\"');\n  escapedEmbedCode = escapedEmbedCode.replace(/\\n/g,'');\n\n  // Return the embed code as a new item\n  return [{\n    json: {\n      embedCode: escapedEmbedCode,\n      title: title,\n      originalUrl: podcastUrl\n    }\n  }];\n}\n\n// n8n node execution\nreturn createPodcastEmbed($input.first().json);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        80
+      ],
+      "id": "48c58629-cc91-41db-ab3e-fcd70737ea36",
+      "name": "Create Podcast Embed"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\"data\": {\n  \"asp_sermon_video_type_select\": \"youtube\",\n  \"asp_sermon_youtube\": \"{{ $('Parse Object').item.json.yt_url }}\",\n  \"asp_sermon_audio_embed\": \"{{ $('Create Podcast Embed').item.json.embedCode }}\",\n  \"asp_sermon_bible_passage\": \"{{ $('Parse Object').item.json.scripture }}\"\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2096,
+        80
+      ],
+      "id": "ea0008a9-beee-4725-b303-cdd1c9bbafe5",
+      "name": "Set up Meta"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractBibleBook(item) {\n  // Extract scripture reading from the input item\n  const scripture = item.scripture;\n\n  // Extract book name\n  let bookName;\n  // Split by space and check if the first part is a number (e.g., \"1\" in \"1 Corinthians\")\n  const parts = scripture.trim().split(' ');\n  if (/^\\d+$/.test(parts[0])) {\n    // If the first part is a number, combine it with the second part\n    bookName = parts.length > 1 ? `${parts[0]} ${parts[1]}` : parts[0];\n  } else {\n    // Otherwise, take the first part as the book name\n    bookName = parts[0];\n  }\n\n  // Return the extracted book name and original scripture\n  return [{\n    json: {\n      bookName: bookName,\n      scripture: scripture\n    }\n  }];\n}\n\n// n8n node execution\nreturn extractBibleBook($('Parse Object').first().json);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        80
+      ],
+      "id": "9edcd2a8-292c-4937-8b8a-010e716d7074",
+      "name": "Get Book Name"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/sermon_speaker",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $('Parse Object').item.json.speaker }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2992,
+        80
+      ],
+      "id": "af2ea898-ea04-422b-ade9-973b91608553",
+      "name": "Find Sermon Speaker",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bae1fe90-6469-4c76-a69e-bea5a2872c49",
+              "leftValue": "={{ $('Find Sermon Speaker').item.json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3216,
+        80
+      ],
+      "id": "d073a225-d895-4616-aac5-6ffd8960a9a7",
+      "name": "If Speaker Exists, Continue, Else Create"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/sermon_speaker",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $('Parse Object').item.json.speaker }}"
+            },
+            {
+              "name": "slug",
+              "value": "={{ $('Parse Object').item.json.speaker.replaceAll(' ','-').toLowerCase() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3440,
+        160
+      ],
+      "id": "9f928f6a-bf90-4b77-9720-075364876cf8",
+      "name": "Create Speaker"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8dfbfcf1-b546-4226-ad4d-18e73dac5d98",
+              "name": "aswp_url",
+              "value": "https://DOMAIN.TLD/wp-json/wp/v2",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -816,
+        304
+      ],
+      "id": "6ebd904e-56fd-46f4-adc1-ef5c85e8bc23",
+      "name": "Set ASWP URL"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=id",
+              "renameField": true,
+              "outputFieldName": "speakerId"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3664,
+        80
+      ],
+      "id": "60d0b1c2-167f-4630-9e34-25d5d76252c4",
+      "name": "speakerId"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/sermon_series",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $('Parse Object').item.json.series }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3888,
+        80
+      ],
+      "id": "3f223954-be2d-415d-acd4-dbe9e9886906",
+      "name": "Find Series",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/sermon_series",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $('Parse Object').item.json.series }}"
+            },
+            {
+              "name": "slug",
+              "value": "={{ $('Parse Object').item.json.series.replaceAll(' ','-').toLowerCase() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4336,
+        160
+      ],
+      "id": "1b834066-7f88-4795-b309-a7d042ff2864",
+      "name": "Create Series",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "EuJwNQVeJ7DglRXy",
+          "name": "Advanced Sermons Wordpress"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=id",
+              "renameField": true,
+              "outputFieldName": "seriesId"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        80
+      ],
+      "id": "da0d9153-8fb9-42f5-93d6-3fec2eed8135",
+      "name": "seriesId"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://DOMAIN.TLD/wp-json/wp/v2/sermons",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $('Create Podcast Embed').item.json.title }}"
+            },
+            {
+              "name": "content"
+            },
+            {
+              "name": "slug",
+              "value": "={{ $('Parse Object').item.json.sermonTitle.toLowerCase().replaceAll(' ','-') }}"
+            },
+            {
+              "name": "status",
+              "value": "publish"
+            },
+            {
+              "name": "meta",
+              "value": "={{ $('Set up Meta').item.json.data }}"
+            },
+            {
+              "name": "sermon_series",
+              "value": "={{ $('seriesId').item.json.seriesId[0] }}"
+            },
+            {
+              "name": "sermon_speaker",
+              "value": "={{ $('speakerId').item.json.speakerId[0] }}"
+            },
+            {
+              "name": "sermon_book",
+              "value": "={{ $('bookId').item.json.bookId[0] }}"
+            },
+            {
+              "name": "=date",
+              "value": "={{ $('Parse Object').item.json.date.toDateTime().toISO().slice(0, -10) }}"
+            },
+            {
+              "name": "featured_media",
+              "value": "={{ $('Get Media').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6128,
+        160
+      ],
+      "id": "e0430650-6c13-454e-b15e-b821f2678e76",
+      "name": "Create Sermon",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "EuJwNQVeJ7DglRXy",
+          "name": "Advanced Sermons Wordpress"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=id",
+              "renameField": true,
+              "outputFieldName": "bookId"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        80
+      ],
+      "id": "39617a5f-4f2a-4a45-bc1e-e05350c92a1b",
+      "name": "bookId"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/sermon_book",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $('Get Book Name').item.json.bookName }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2544,
+        80
+      ],
+      "id": "a05fe5a1-d6f5-43e1-9242-51e4f0775df7",
+      "name": "Find Sermon Book",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bae1fe90-6469-4c76-a69e-bea5a2872c49",
+              "leftValue": "={{ $('Find Series').item.json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4112,
+        80
+      ],
+      "id": "b636599d-f31f-4218-a5d7-49347d13cc28",
+      "name": "If Series Exists, Continue, Else Create"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/media",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $('Parse Object').item.json.series }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            },
+            {
+              "name": "media_type",
+              "value": "image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4784,
+        80
+      ],
+      "id": "283e1a6a-731a-47cb-898b-dd95a41773f5",
+      "name": "Find Media",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bae1fe90-6469-4c76-a69e-bea5a2872c49",
+              "leftValue": "={{ $('Find Media').item.json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5008,
+        80
+      ],
+      "id": "0812eeb7-521e-41fb-86fb-d893b51d2475",
+      "name": "If Media Exists, Continue, Else Create"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/media",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Disposition",
+              "value": "=attachment; filename={{ $('Parse Object').item.json.series.replaceAll(' ','-').toLowerCase() }}.jpg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "image/jpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5456,
+        160
+      ],
+      "id": "ce64a21e-24bf-4dc5-968c-3385d52af86a",
+      "name": "Create Media",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "EuJwNQVeJ7DglRXy",
+          "name": "Advanced Sermons Wordpress"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Parse Object').item.json.image_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5232,
+        160
+      ],
+      "id": "b8ca8d4c-1db4-422c-b316-84fda2fb8592",
+      "name": "Get YT Thumbnail"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Set ASWP URL').item.json.aswp_url }}/media",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $('Parse Object').item.json.series }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            },
+            {
+              "name": "media_type",
+              "value": "image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5904,
+        80
+      ],
+      "id": "94509f4a-7abf-43ac-9a4f-aaadd201d87f",
+      "name": "Get Media",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5680,
+        160
+      ],
+      "id": "a8387a89-4b41-4d62-ab82-3ac3cf6f4e6e",
+      "name": "Wait",
+      "webhookId": "3f18fdf1-d207-4d49-ac8a-497f215deb77"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9jnWLGeQN5qW9zs2",
+          "mode": "list",
+          "cachedResultName": "Message to Discord Webhook"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "=Publish to Advanced Sermons WordPress Plugin – {{ $now.format('yyyy-MM-dd | f') }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        -112
+      ],
+      "id": "396df895-1fd2-4c15-9b64-39ac3c475c1d",
+      "name": "Discord Webhook – End",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                2
+              ],
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        304
+      ],
+      "id": "cfb81810-0810-4f86-9a25-8cd05f16728b",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Parse Object": {
+      "main": [
+        [
+          {
+            "node": "If WP Sermon Exists, Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sermons on WP": {
+      "main": [
+        [
+          {
+            "node": "Parse Sermon Titles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sermon Titles": {
+      "main": [
+        [
+          {
+            "node": "Fix Sermon Titles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Sermon Titles": {
+      "main": [
+        [
+          {
+            "node": "Get YT Sermons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YT Sermons": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Objects": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook – End",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If WP Sermon Exists, Continue": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Podcast Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Podcast Episodes": {
+      "main": [
+        [
+          {
+            "node": "Podcast XML to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Podcast XML to JSON": {
+      "main": [
+        [
+          {
+            "node": "Parse Podcast XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Podcast XML": {
+      "main": [
+        [
+          {
+            "node": "If Error, Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Error, Loop": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Podcast Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Podcast Embed": {
+      "main": [
+        [
+          {
+            "node": "Set up Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set up Meta": {
+      "main": [
+        [
+          {
+            "node": "Get Book Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Book Name": {
+      "main": [
+        [
+          {
+            "node": "Find Sermon Book",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Sermon Speaker": {
+      "main": [
+        [
+          {
+            "node": "If Speaker Exists, Continue, Else Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Speaker Exists, Continue, Else Create": {
+      "main": [
+        [
+          {
+            "node": "speakerId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Speaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Speaker": {
+      "main": [
+        [
+          {
+            "node": "speakerId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set ASWP URL": {
+      "main": [
+        [
+          {
+            "node": "Get Sermons on WP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "speakerId": {
+      "main": [
+        [
+          {
+            "node": "Find Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Series": {
+      "main": [
+        [
+          {
+            "node": "If Series Exists, Continue, Else Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Series": {
+      "main": [
+        [
+          {
+            "node": "seriesId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seriesId": {
+      "main": [
+        [
+          {
+            "node": "Find Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sermon": {
+      "main": [
+        [
+          {
+            "node": "Loop Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bookId": {
+      "main": [
+        [
+          {
+            "node": "Find Sermon Speaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Sermon Book": {
+      "main": [
+        [
+          {
+            "node": "bookId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Series Exists, Continue, Else Create": {
+      "main": [
+        [
+          {
+            "node": "seriesId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Media": {
+      "main": [
+        [
+          {
+            "node": "If Media Exists, Continue, Else Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Media Exists, Continue, Else Create": {
+      "main": [
+        [
+          {
+            "node": "Get Media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get YT Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Media": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YT Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Create Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Media": {
+      "main": [
+        [
+          {
+            "node": "Create Sermon",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set ASWP URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c2ee72a0e88923bc637975f09b9bf63e684e7277868acf88bb223cf6cdac4ef"
+  }
+}
